@@ -10,23 +10,17 @@ import java.util.List;
 
 @Getter
 @Setter
-public class SignupRequestDto {
-    @NotBlank(message = "Username is required")
+public class UpdateProfileDto {
     @Size(min = 3, max = 20, message = "Username must be between 3–20 characters")
     private String username;
 
-    @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;
 
-    @NotBlank(message = "Password is required")
     @Pattern(
             regexp = "^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
             message = "Password must be at least 8 chars, contain 1 uppercase, 1 lowercase, 1 digit, 1 special char"
     )
     private String password;
 
-    @NotEmpty(message = "At least one Role is required")
-    @ValidateRole(enumClass = Role.class, message = "Role must be one of ADMIN, CUSTOMER")
-    private List<String> role;
 }
