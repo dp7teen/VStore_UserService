@@ -61,4 +61,11 @@ public class UserController {
                 userService.updateRole(dto), HttpStatus.CREATED
         );
     }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> deleteUser(@Valid @RequestBody DeleteUserDto dto) throws UserNotFoundException {
+        return new ResponseEntity<>(
+                userService.deleteUser(dto.getEmail()), HttpStatus.OK
+        );
+    }
 }

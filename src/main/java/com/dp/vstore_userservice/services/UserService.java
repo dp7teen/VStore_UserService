@@ -27,4 +27,6 @@ public interface UserService {
     User updateProfile(UpdateProfileDto dto) throws UserNotFoundException;
 
     String updateRole(RoleUpdateDto dto) throws UserNotFoundException;
+
+    String deleteUser(String email) throws UserNotFoundException;
 }

@@ -55,14 +55,14 @@ public class UserServiceImpl implements UserService {
             UserAlreadyPresentException {
         Optional<User> optionalUser = findUser(email);
         if (optionalUser.isPresent()) {
-            throw new UserAlreadyPresentException(String.format("User already present with this email : '%s'", email));
+            throw new UserAlreadyPresentException(String.format("User already present with this email '%s'", email));
         }
         User user = new User();
         user.setEmail(email);
         user.setUserName(userName);
         user.setPassword(passwordEncoder.encode(password));
         user.setRole(new ArrayList<>());
-        roles.forEach(role -> user.getRole().add(Role.valueOf(role)));
+        roles.forEach(role -> user.getRole().add(Role.valueOf(role.toUpperCase())));
         userRepository.save(user);
         return user;
     }
@@ -122,5 +122,20 @@ public class UserServiceImpl implements UserService {
                 new EmailUpdater(), new UsernameUpdater(),
                 new PasswordUpdater()
         );
+    }
+
+    @Override
+    public String deleteUser(String email) throws UserNotFoundException {
+        Optional<User> optionalUser = findUser(email);
+        if (optionalUser.isEmpty()){
+            throw new UserNotFoundException(String.format("User with email '%s' not found", email));
+        }
+        User user = optionalUser.get();
+        UserDetails userDetails = getPrincipal();
+        if (userDetails.getUsername().equals(email)) {
+            throw new RuntimeException(String.format("User with email '%s' cannot be deleted by same user", email));
+        }
+        userRepository.delete(user);
+        return "Successfully deleted!";
     }
 }
