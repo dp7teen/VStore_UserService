@@ -62,7 +62,7 @@ public class UserServiceImpl implements UserService {
         user.setUserName(userName);
         user.setPassword(passwordEncoder.encode(password));
         user.setRole(new ArrayList<>());
-        roles.forEach(role -> user.getRole().add(Role.valueOf(role)));
+        roles.forEach(role -> user.getRole().add(Role.valueOf(role.toUpperCase())));
         userRepository.save(user);
         return user;
     }
@@ -115,6 +115,22 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
 
         return "Successfully roles updated!";
+    }
+
+    @Override
+    public String deleteUser(String email) throws UserNotFoundException {
+        Optional<User> optionalUser = findUser(email);
+        if (optionalUser.isEmpty()){
+            throw new UserNotFoundException(String.format("User with email : '%s' not found", email));
+        }
+        User user = optionalUser.get();
+        UserDetails userDetails = getPrincipal();
+        if (userDetails.getUsername().equals(email)){
+            throw new RuntimeException(String.format("User cannot delete same User, [%s : %s]",
+                    userDetails.getUsername(), user.getUserName()));
+        }
+        userRepository.delete(user);
+        return String.format("Successfully deleted user '%s'", user.getUserName());
     }
 
     private void initiateProfileUpdaters() {

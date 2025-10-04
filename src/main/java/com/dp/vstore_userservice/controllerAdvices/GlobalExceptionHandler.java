@@ -1,5 +1,6 @@
 package com.dp.vstore_userservice.controllerAdvices;
 
+import com.dp.vstore_userservice.exceptions.RolesRequiredException;
 import com.dp.vstore_userservice.exceptions.UserAlreadyPresentException;
 import com.dp.vstore_userservice.exceptions.UserNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -38,6 +39,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<Map<String, String>> userNotFoundException(UserNotFoundException e) {
         return exception(e.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(RolesRequiredException.class)
+    public ResponseEntity<Map<String, String>> rolesRequiredException(RolesRequiredException e) {
+        return exception(e.getMessage(), HttpStatus.EXPECTATION_FAILED);
     }
 
     @ExceptionHandler(Exception.class)

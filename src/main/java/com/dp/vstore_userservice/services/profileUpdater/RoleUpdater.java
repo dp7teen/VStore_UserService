@@ -12,7 +12,7 @@ public class RoleUpdater{
     public void update(User user, RoleUpdateDto dto) {
         if (!dto.getRoles().isEmpty()) {
             List<Role> roles = dto.getRoles().stream()
-                    .map(Role::valueOf)
+                    .map(role -> Role.valueOf(role.toUpperCase()))
                     .toList();
             user.setRole(roles);
         }
