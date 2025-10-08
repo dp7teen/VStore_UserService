@@ -1,16 +1,10 @@
 package com.dp.vstore_userservice.services;
 
 import com.dp.vstore_userservice.dtos.RoleUpdateDto;
-import com.dp.vstore_userservice.dtos.SignupRequestDto;
 import com.dp.vstore_userservice.dtos.UpdateProfileDto;
 import com.dp.vstore_userservice.exceptions.UserAlreadyPresentException;
 import com.dp.vstore_userservice.exceptions.UserNotFoundException;
-import com.dp.vstore_userservice.models.Role;
 import com.dp.vstore_userservice.models.User;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,11 +14,11 @@ public interface UserService {
     User signup(String userName, String email, String password, List<String> role) throws UserNotFoundException,
             UserAlreadyPresentException;
 
-    String login(String email, String password);
+    String login(String email, String password) throws UserNotFoundException;
 
-    User me() throws UserNotFoundException;
+    User me(String email) throws UserNotFoundException;
 
-    User updateProfile(UpdateProfileDto dto) throws UserNotFoundException;
+    User updateProfile(UpdateProfileDto dto, String email) throws UserNotFoundException;
 
     String updateRole(RoleUpdateDto dto) throws UserNotFoundException;
 

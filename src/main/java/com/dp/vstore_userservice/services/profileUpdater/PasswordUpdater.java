@@ -8,8 +8,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PasswordUpdater implements ProfileUpdater{
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
+
+    public PasswordUpdater(PasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @Override
     public void update(User user, UpdateProfileDto dto) {
