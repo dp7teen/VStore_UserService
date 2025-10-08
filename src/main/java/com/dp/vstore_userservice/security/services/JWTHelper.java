@@ -1,7 +1,10 @@
 package com.dp.vstore_userservice.security.services;
 
+import com.dp.vstore_userservice.models.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -13,15 +16,23 @@ import java.util.function.Function;
 
 @Component
 public class JWTHelper {
-    private static final String SECRET_KEY_STRING = "ls2jMCiA1uP2JuXyRsxBvvJJSyZxrnxq";
-    private final SecretKey SECRET_KEY = Keys.hmacShaKeyFor(SECRET_KEY_STRING.getBytes());
+    @Value("${jwt.secret}")
+    private String SECRET_KEY_STRING;
+    private SecretKey SECRET_KEY;
+    @Value("${jwt.expiration}")
+    private int TOKEN_EXPIRATION_MINUTES;
 
-    public String generateToken(String email, Map<String, Object> claims) {
+    @PostConstruct
+    public void init() {
+        SECRET_KEY = Keys.hmacShaKeyFor(SECRET_KEY_STRING.getBytes());
+    }
+
+    public String generateToken(User user, Map<String, Object> claims) {
         return Jwts.builder()
                 .claims(claims)
-                .subject(email)
+                .subject(user.getEmail())
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + Duration.ofMinutes(10).toMillis()))
+                .expiration(new Date(System.currentTimeMillis() + Duration.ofMinutes(TOKEN_EXPIRATION_MINUTES).toMillis()))
                 .signWith(SECRET_KEY, Jwts.SIG.HS256)
                 .compact();
     }

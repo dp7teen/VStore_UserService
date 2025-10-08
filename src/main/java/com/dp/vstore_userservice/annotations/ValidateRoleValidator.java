@@ -1,10 +1,12 @@
 package com.dp.vstore_userservice.annotations;
 
+import com.dp.vstore_userservice.exceptions.RolesRequiredException;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 public class ValidateRoleValidator implements ConstraintValidator<ValidateRole, List<String>> {
@@ -21,6 +23,6 @@ public class ValidateRoleValidator implements ConstraintValidator<ValidateRole, 
         if (values.isEmpty()) return false;
         return values.stream()
                 .map(String::toUpperCase)
-                .allMatch(roles::contains);
+                .allMatch(value -> roles.contains(value));
     }
 }

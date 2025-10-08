@@ -1,7 +1,6 @@
 package com.dp.vstore_userservice.services;
 
 import com.dp.vstore_userservice.dtos.RoleUpdateDto;
-import com.dp.vstore_userservice.dtos.SignupRequestDto;
 import com.dp.vstore_userservice.dtos.UpdateProfileDto;
 import com.dp.vstore_userservice.exceptions.UserAlreadyPresentException;
 import com.dp.vstore_userservice.exceptions.UserNotFoundException;
@@ -10,13 +9,12 @@ import com.dp.vstore_userservice.models.User;
 import com.dp.vstore_userservice.repositories.UserRepository;
 import com.dp.vstore_userservice.security.services.JWTHelper;
 import com.dp.vstore_userservice.services.profileUpdater.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.dp.vstore_userservice.utility.GetPrincipal;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -29,12 +27,14 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JWTHelper jwthelper;
-    private List<ProfileUpdater> profileUpdaters;
+    private final List<ProfileUpdater> profileUpdaters;
 
     public UserServiceImpl(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            AuthenticationManager authenticationManager,
-                           JWTHelper jwthelper) {
+                           JWTHelper jwthelper,
+                           List<ProfileUpdater> profileUpdaters) {
+        this.profileUpdaters = profileUpdaters;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
@@ -43,11 +43,6 @@ public class UserServiceImpl implements UserService {
 
     private Optional<User> findUser(String email) throws UserNotFoundException {
         return userRepository.findByEmail(email);
-    }
-
-    private UserDetails getPrincipal() {
-        SecurityContext securityContext = SecurityContextHolder.getContext();
-        return (UserDetails) securityContext.getAuthentication().getPrincipal();
     }
 
     @Override
@@ -62,40 +57,49 @@ public class UserServiceImpl implements UserService {
         user.setUserName(userName);
         user.setPassword(passwordEncoder.encode(password));
         user.setRole(new ArrayList<>());
-        roles.forEach(role -> user.getRole().add(Role.valueOf(role)));
+        roles.forEach(role -> user.getRole().add(Role.valueOf(role.toUpperCase())));
         userRepository.save(user);
         return user;
     }
 
     @Override
-    public String login(String email, String password) {
-        Authentication authentication =
-                authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+    public String login(String email, String password) throws UserNotFoundException {
+        Optional<User> optionalUser = findUser(email);
+        if (optionalUser.isEmpty()) {
+            throw new UserNotFoundException(String.format("User with email : '%s' not found", email));
+        }
+
+        User user = optionalUser.get();
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            throw new BadCredentialsException("Invalid password");
+        }
+
         Map<String, Object> claims = new HashMap<>();
-        List<String> roles = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .toList();
-        claims.put("roles", roles);
-        return jwthelper.generateToken(email, claims);
+        claims.put("userid", user.getId());
+        claims.put("roles", user.getRole().stream().map(Enum::name).toList());
+        claims.put("userName", user.getUserName());
+
+        return jwthelper.generateToken(user, claims);
     }
 
     @Override
-    public User me() throws UserNotFoundException {
-        UserDetails userDetails = getPrincipal();
+    @Cacheable(value = "users", key = "#email")
+    public User me(String email) throws UserNotFoundException {
+        UserDetails userDetails = GetPrincipal.principal();
         return findUser(userDetails.getUsername()).orElseThrow(
                 () -> new UserNotFoundException(String.format("User with email : '%s' not found", userDetails.getUsername())));
     }
 
     @Override
-    public User updateProfile(UpdateProfileDto dto) throws UserNotFoundException {
-        UserDetails userDetails = getPrincipal();
-        Optional<User> optionalUser = findUser(userDetails.getUsername());
+    @CachePut(value = "users", key = "#email")
+    public User updateProfile(UpdateProfileDto dto, String email) throws UserNotFoundException {
+        Optional<User> optionalUser = findUser(email);
         if (optionalUser.isEmpty()){
-            throw new UserNotFoundException(String.format("User with email : '%s' not found", userDetails.getUsername()));
+            throw new UserNotFoundException(String.format("User with email : '%s' not found", email));
         }
         User user = optionalUser.get();
-        initiateProfileUpdaters();
+
         for (ProfileUpdater profileUpdater : profileUpdaters) {
             profileUpdater.update(user, dto);
         }
@@ -103,6 +107,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @CachePut(value = "users", key = "#dto.getEmail()")
     public String updateRole(RoleUpdateDto dto) throws UserNotFoundException {
         Optional<User> optionalUser = findUser(dto.getEmail());
         if (optionalUser.isEmpty()){
@@ -117,10 +122,20 @@ public class UserServiceImpl implements UserService {
         return "Successfully roles updated!";
     }
 
-    private void initiateProfileUpdaters() {
-        profileUpdaters = List.of(
-                new EmailUpdater(), new UsernameUpdater(),
-                new PasswordUpdater()
-        );
+    @Override
+    @CacheEvict(value = "users", key = "#email")
+    public String deleteUser(String email) throws UserNotFoundException {
+        Optional<User> optionalUser = findUser(email);
+        if (optionalUser.isEmpty()){
+            throw new UserNotFoundException(String.format("User with email : '%s' not found", email));
+        }
+        User user = optionalUser.get();
+        UserDetails userDetails = GetPrincipal.principal();
+        if (userDetails.getUsername().equals(email)){
+            throw new RuntimeException(String.format("User cannot delete same User, [%s : %s]",
+                    userDetails.getUsername(), user.getUserName()));
+        }
+        userRepository.delete(user);
+        return String.format("Successfully deleted user '%s'", user.getUserName());
     }
 }
