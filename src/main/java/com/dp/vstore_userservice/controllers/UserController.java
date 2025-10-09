@@ -46,7 +46,7 @@ public class UserController {
     public ResponseEntity<UserDto> me() throws UserNotFoundException {
         UserDetails details = GetPrincipal.principal();
         return new ResponseEntity<>(
-                UserDto.from(userService.me(details.getUsername())),
+                userService.me(details.getUsername()),
                 HttpStatus.OK
         );
     }
@@ -54,14 +54,14 @@ public class UserController {
     @PatchMapping("/update")
     public ResponseEntity<UserDto> updateProfile(@Valid  @RequestBody UpdateProfileDto dto) throws UserNotFoundException {
         return new ResponseEntity<>(
-                UserDto.from(userService.updateProfile(dto, GetPrincipal.principal().getUsername())),
+                userService.updateProfile(dto, GetPrincipal.principal().getUsername()),
                 HttpStatus.CREATED
         );
     }
 
     @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping("/update/role")
-    public ResponseEntity<String> updateRole(@Valid @RequestBody RoleUpdateDto dto) throws UserNotFoundException {
+    public ResponseEntity<UserDto> updateRole(@Valid @RequestBody RoleUpdateDto dto) throws UserNotFoundException {
         return new ResponseEntity<>(
                 userService.updateRole(dto), HttpStatus.CREATED
         );

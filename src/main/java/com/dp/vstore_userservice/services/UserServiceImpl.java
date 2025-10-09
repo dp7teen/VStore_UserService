@@ -2,6 +2,7 @@ package com.dp.vstore_userservice.services;
 
 import com.dp.vstore_userservice.dtos.RoleUpdateDto;
 import com.dp.vstore_userservice.dtos.UpdateProfileDto;
+import com.dp.vstore_userservice.dtos.UserDto;
 import com.dp.vstore_userservice.exceptions.UserAlreadyPresentException;
 import com.dp.vstore_userservice.exceptions.UserNotFoundException;
 import com.dp.vstore_userservice.models.Role;
@@ -85,15 +86,17 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Cacheable(value = "users", key = "#email")
-    public User me(String email) throws UserNotFoundException {
+    public UserDto me(String email) throws UserNotFoundException {
         UserDetails userDetails = GetPrincipal.principal();
-        return findUser(userDetails.getUsername()).orElseThrow(
-                () -> new UserNotFoundException(String.format("User with email : '%s' not found", userDetails.getUsername())));
+        return findUser(userDetails.getUsername())
+                .map(UserDto::from)
+                .orElseThrow(() ->
+                        new UserNotFoundException(String.format("User with email : '%s' not found", userDetails.getUsername())));
     }
 
     @Override
     @CachePut(value = "users", key = "#email")
-    public User updateProfile(UpdateProfileDto dto, String email) throws UserNotFoundException {
+    public UserDto updateProfile(UpdateProfileDto dto, String email) throws UserNotFoundException {
         Optional<User> optionalUser = findUser(email);
         if (optionalUser.isEmpty()){
             throw new UserNotFoundException(String.format("User with email : '%s' not found", email));
@@ -103,12 +106,13 @@ public class UserServiceImpl implements UserService {
         for (ProfileUpdater profileUpdater : profileUpdaters) {
             profileUpdater.update(user, dto);
         }
-        return userRepository.save(user);
+        userRepository.save(user);
+        return UserDto.from(user);
     }
 
     @Override
     @CachePut(value = "users", key = "#dto.getEmail()")
-    public String updateRole(RoleUpdateDto dto) throws UserNotFoundException {
+    public UserDto updateRole(RoleUpdateDto dto) throws UserNotFoundException {
         Optional<User> optionalUser = findUser(dto.getEmail());
         if (optionalUser.isEmpty()){
             throw new UserNotFoundException(String.format("User with email : '%s' not found", dto.getEmail()));
@@ -119,7 +123,7 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(user);
 
-        return "Successfully roles updated!";
+        return UserDto.from(user);
     }
 
     @Override
