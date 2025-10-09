@@ -1,6 +1,7 @@
 package com.dp.vstore_userservice.repositories;
 
 import com.dp.vstore_userservice.models.User;
+import jakarta.validation.constraints.Email;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -11,4 +12,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     @Override
     Optional<User> findById(Long id);
+
+    boolean existsByEmail(String email);
 }
